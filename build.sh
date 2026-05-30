@@ -12,7 +12,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 echo "==> 编译 (arm64, macOS 12+)"
 xcrun -sdk macosx swiftc -O \
   -target arm64-apple-macos12.0 \
-  -framework AppKit -framework Carbon \
+  -framework AppKit -framework Carbon -framework Vision \
   "$ROOT/src/main.swift" -o "$BIN"
 
 echo "==> 写 Info.plist (LSUIElement 后台运行)"

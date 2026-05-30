@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">QuickTranslate logo mark</title>
+  <desc id="desc">A macOS-style translation mark with A and 译 connected by a fast arrow, an Option-D keycap, and a cursor popup shape.</desc>
+  <defs>
+    <linearGradient id="tile" x1="86" y1="64" x2="430" y2="454" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".54" stop-color="#f2fbf8"/>
+      <stop offset="1" stop-color="#e6eefb"/>
+    </linearGradient>
+    <linearGradient id="aqua" x1="106" y1="172" x2="337" y2="294" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#17d0bd"/>
+      <stop offset="1" stop-color="#0e8ff0"/>
+    </linearGradient>
+    <linearGradient id="coral" x1="285" y1="170" x2="414" y2="326" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff8668"/>
+      <stop offset="1" stop-color="#ff4d65"/>
+    </linearGradient>
+    <filter id="softShadow" x="-16%" y="-14%" width="132%" height="136%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#172033" flood-opacity=".16"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#172033" flood-opacity=".10"/>
+    </filter>
+  </defs>
+
+  <rect x="32" y="32" width="448" height="448" rx="108" fill="url(#tile)"/>
+  <rect x="33.5" y="33.5" width="445" height="445" rx="106.5" fill="none" stroke="#ffffff" stroke-width="3" opacity=".88"/>
+  <rect x="58" y="58" width="396" height="396" rx="88" fill="none" stroke="#21314d" stroke-opacity=".08" stroke-width="2"/>
+
+  <g filter="url(#softShadow)">
+    <path d="M134 119h206c39.8 0 72 32.2 72 72v74c0 39.8-32.2 72-72 72h-80l-82 67v-67h-44c-39.8 0-72-32.2-72-72v-74c0-39.8 32.2-72 72-72Z" fill="#ffffff"/>
+    <path d="M134 119h206c39.8 0 72 32.2 72 72v74c0 39.8-32.2 72-72 72h-80l-82 67v-67h-44c-39.8 0-72-32.2-72-72v-74c0-39.8 32.2-72 72-72Z" fill="none" stroke="#1b2538" stroke-width="10" stroke-linejoin="round"/>
+  </g>
+
+  <rect x="103" y="159" width="150" height="43" rx="17" fill="#17d0bd" opacity=".18"/>
+  <rect x="107" y="272" width="225" height="34" rx="15" fill="#0e8ff0" opacity=".10"/>
+  <rect x="266" y="162" width="101" height="43" rx="17" fill="#ff5f6f" opacity=".13"/>
+
+  <text x="125" y="271" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif" font-size="120" font-weight="800" fill="#1b2538">A</text>
+  <path d="M226 235h67" fill="none" stroke="url(#aqua)" stroke-width="16" stroke-linecap="round"/>
+  <path d="M284 207 320 235l-36 28" fill="none" stroke="url(#aqua)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="302" y="268" font-family="'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', sans-serif" font-size="106" font-weight="700" fill="url(#coral)">译</text>
+
+  <g transform="translate(300 73)">
+    <rect width="104" height="55" rx="21" fill="#1b2538"/>
+    <rect x="1.5" y="1.5" width="101" height="52" rx="19.5" fill="none" stroke="#ffffff" stroke-opacity=".14" stroke-width="3"/>
+    <path d="M24 21h15l16 18h25" fill="none" stroke="#ffffff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M24 39h13" fill="none" stroke="#ffffff" stroke-width="4.2" stroke-linecap="round"/>
+    <text x="74" y="37" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif" font-size="25" font-weight="750" fill="#ffffff">D</text>
+  </g>
+
+  <path d="M344 318 435 381l-43 13 23 50-31 14-23-50-34 36 17-126Z" fill="#1b2538"/>
+  <path d="M344 318 435 381l-43 13 23 50-31 14-23-50-34 36 17-126Z" fill="none" stroke="#ffffff" stroke-width="10" stroke-linejoin="round"/>
+</svg>

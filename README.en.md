@@ -2,6 +2,10 @@
 
 **English** · [简体中文](./README.md)
 
+<p align="center">
+  <img src="./assets/logo.svg" width="560" alt="QuickTranslate logo">
+</p>
+
 > A dead-simple macOS pop-up translator: select text anywhere, hit **⌥D**, and get the translation right next to your cursor — powered by **macOS's built-in translation engine**. **No API keys, no cost, no account, no network login.**
 
 <p align="center">
@@ -15,7 +19,8 @@ Inspired by [Bob](https://bobtranslate.com/). Bob's "system translation" actuall
 ## ✨ Features
 
 - **⌥D selection translation** — select text in any app, press `⌥D`, the translation pops up by your cursor
-- **Auto direction** — English → Chinese, Chinese → English (switched automatically based on what you selected)
+- **⌥S screenshot translation (OCR)** — press `⌥S`, drag-select a screen region, text is recognized locally and translated (Apple Vision framework, offline & free — works on text in images, videos, PDFs)
+- **Auto direction** — English → Chinese, Chinese → English (switched automatically based on the content)
 - **Native engine** — uses the macOS Translation engine; no third-party API, no cost
 - **Click the result to copy**, press `Esc` to dismiss
 - **Lives in the menu bar**, no Dock icon, negligible footprint
@@ -58,6 +63,15 @@ Simulating `⌘C` to grab the selected text requires Accessibility permission:
 2. **System Settings › Privacy & Security › Accessibility** → enable **QuickTranslate**
 3. Quit and **relaunch** the app (the permission takes effect after a restart)
 
+> ⌥S screenshot translation uses the system `screencapture`. If you're asked for **Screen Recording** permission on first use, enable QuickTranslate under **Privacy & Security › Screen Recording**.
+
+### Usage
+
+| Shortcut | Action |
+|----------|--------|
+| `⌥D` | Selected text → translate |
+| `⌥S` | Drag-select a screen region → OCR → translate |
+
 ---
 
 ## 🔧 Setting up the Shortcut
@@ -90,15 +104,15 @@ echo '{"text":"hello world","detectFrom":"","detectTo":"zh_CN"}' | shortcuts run
 ## ⚙️ How it works
 
 ```
-Press ⌥D
-  → simulate ⌘C to copy the selected text
-  → read the clipboard, detect direction (CJK ratio)
-  → build {"text", "detectFrom":"", "detectTo":"zh_CN"|"en_US"}
-  → pipe it to `shortcuts run` (= the native Translate Text action)
-  → show the result in a panel next to the cursor
+Press ⌥D (selection)
+  → simulate ⌘C to copy the selected text ─┐
+                                           ├→ detect direction (CJK ratio)
+Press ⌥S (screenshot)                      │   → build {"text","detectFrom":"","detectTo":"zh_CN"|"en_US"}
+  → screencapture -i to drag-select        │   → pipe to `shortcuts run` (= native Translate Text action)
+  → Vision on-device OCR ──────────────────┘   → show the result in a panel next to the cursor
 ```
 
-The global hotkey uses Carbon `RegisterEventHotKey`, the pop-up is a borderless `NSPanel`, and the whole thing is an `LSUIElement` menu-bar app.
+The global hotkeys use Carbon `RegisterEventHotKey` (multiple keys dispatched by id), OCR uses the `Vision` framework on-device, the pop-up is a borderless `NSPanel`, and the whole thing is an `LSUIElement` menu-bar app.
 
 ## 🛠 Customize
 
@@ -107,7 +121,8 @@ Edit the constants at the top of `src/main.swift`, then re-run `./build.sh`:
 | Constant | Purpose | Default |
 |----------|---------|---------|
 | `kShortcutName` | Shortcut to invoke | `Bob.Translate.v2` |
-| `kHotKeyCode` | Hotkey key | `kVK_ANSI_D` (D) |
+| `kHotKeyCode` | Selection-translate key | `kVK_ANSI_D` (D) |
+| `kHotKeyCodeOCR` | Screenshot-translate key | `kVK_ANSI_S` (S) |
 | `kHotKeyMods` | Modifier | `optionKey` (⌥) |
 
 Direction logic lives in `nativeTranslate()` and `isMostlyCJK()` — extend there for more languages.
@@ -115,8 +130,9 @@ Direction logic lives in `nativeTranslate()` and `isMostlyCJK()` — extend ther
 ## ❓ Troubleshooting
 
 - **⌥D does nothing / no text captured**: make sure Accessibility permission is on and you've relaunched the app.
+- **⌥S can't capture after selecting**: enable QuickTranslate under Privacy & Security › Screen Recording.
 - **"Translation not supported"**: use `zh_CN`/`en_US` identifiers; or the language pair isn't ready yet — run the **Translate Text** action once in the Shortcuts app to initialize it.
-- **⌥D clashes with another app**: change `kHotKeyCode` / `kHotKeyMods` and rebuild.
+- **⌥D / ⌥S clashes with another app**: change `kHotKeyCode` / `kHotKeyCodeOCR` / `kHotKeyMods` and rebuild.
 
 ## 🙏 Credits
 

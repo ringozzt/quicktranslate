@@ -2,11 +2,13 @@
 // 原理：全局热键 ⌥D → 模拟 ⌘C 取选中文本 → 调用快捷指令(系统原生翻译) → 光标旁弹窗显示
 import AppKit
 import Carbon.HIToolbox
+import Vision
 
 // ============ 配置 ============
-let kShortcutName = "Bob.Translate.v2"   // 复用系统原生翻译的快捷指令
-let kHotKeyCode   = UInt32(kVK_ANSI_D)   // D
-let kHotKeyMods   = UInt32(optionKey)    // ⌥ Option
+let kShortcutName  = "Bob.Translate.v2"   // 复用系统原生翻译的快捷指令
+let kHotKeyCode    = UInt32(kVK_ANSI_D)   // ⌥D 划词翻译
+let kHotKeyCodeOCR = UInt32(kVK_ANSI_S)   // ⌥S 截图 OCR 翻译
+let kHotKeyMods    = UInt32(optionKey)    // ⌥ Option
 
 // ============ 翻译方向判断 ============
 func isMostlyCJK(_ s: String) -> Bool {
@@ -66,6 +68,35 @@ func copySelectedText() -> String {
         usleep(10_000); waited += 1
     }
     return pb.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+}
+
+// ============ 截图 OCR（系统截图 + Vision 本地识别）============
+func captureRegionToFile() -> String? {
+    let tmp = NSTemporaryDirectory() + "qt_ocr_\(getpid()).png"
+    try? FileManager.default.removeItem(atPath: tmp)
+    let p = Process()
+    p.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+    p.arguments = ["-i", "-x", tmp]   // -i 交互框选, -x 无快门声
+    do { try p.run() } catch { return nil }
+    p.waitUntilExit()
+    // 用户按 Esc 取消框选时不会生成文件
+    return FileManager.default.fileExists(atPath: tmp) ? tmp : nil
+}
+
+func ocrImage(_ path: String) -> String {
+    guard let img = NSImage(contentsOfFile: path),
+          let tiff = img.tiffRepresentation,
+          let bitmap = NSBitmapImageRep(data: tiff),
+          let cg = bitmap.cgImage else { return "" }
+    let req = VNRecognizeTextRequest()
+    req.recognitionLevel = .accurate
+    req.usesLanguageCorrection = true
+    req.recognitionLanguages = ["zh-Hans", "en-US"]
+    let handler = VNImageRequestHandler(cgImage: cg, options: [:])
+    try? handler.perform([req])
+    let obs = req.results ?? []
+    let lines = obs.compactMap { $0.topCandidates(1).first?.string }
+    return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
 // ============ 弹窗 ============
@@ -182,34 +213,44 @@ final class PopupPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
 
-// ============ 全局热键 ============
-final class HotKey {
-    private var ref: EventHotKeyRef?
-    private let onFire: () -> Void
-    init?(code: UInt32, mods: UInt32, onFire: @escaping () -> Void) {
-        self.onFire = onFire
-        var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
-                                      eventKind: UInt32(kEventHotKeyPressed))
-        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-        InstallEventHandler(GetApplicationEventTarget(), { _, evt, ctx -> OSStatus in
-            guard let ctx = ctx else { return noErr }
-            let me = Unmanaged<HotKey>.fromOpaque(ctx).takeUnretainedValue()
-            DispatchQueue.main.async { me.onFire() }
-            _ = evt
-            return noErr
-        }, 1, &eventType, selfPtr, nil)
+// ============ 全局热键（支持多个，按 id 分发）============
+final class HotKeyCenter {
+    static let shared = HotKeyCenter()
+    private var handlers: [UInt32: () -> Void] = [:]
+    private var refs: [EventHotKeyRef?] = []
+    private var installed = false
 
-        let hkID = EventHotKeyID(signature: OSType(0x51545254 /* 'QTRT' */), id: 1)
+    @discardableResult
+    func register(id: UInt32, code: UInt32, mods: UInt32, action: @escaping () -> Void) -> Bool {
+        if !installed { install() }
+        var ref: EventHotKeyRef?
+        let hkID = EventHotKeyID(signature: OSType(0x51545254 /* 'QTRT' */), id: id)
         let status = RegisterEventHotKey(code, mods, hkID, GetApplicationEventTarget(), 0, &ref)
-        if status != noErr { return nil }
+        if status != noErr { return false }
+        handlers[id] = action
+        refs.append(ref)
+        return true
     }
-    deinit { if let r = ref { UnregisterEventHotKey(r) } }
+
+    private func install() {
+        installed = true
+        var et = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
+                               eventKind: UInt32(kEventHotKeyPressed))
+        InstallEventHandler(GetApplicationEventTarget(), { _, evt, _ -> OSStatus in
+            var hkID = EventHotKeyID()
+            GetEventParameter(evt, EventParamName(kEventParamDirectObject),
+                              EventParamType(typeEventHotKeyID), nil,
+                              MemoryLayout<EventHotKeyID>.size, nil, &hkID)
+            let id = hkID.id
+            DispatchQueue.main.async { HotKeyCenter.shared.handlers[id]?() }
+            return noErr
+        }, 1, &et, nil, nil)
+    }
 }
 
 // ============ App ============
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
-    var hotKey: HotKey?
     let popup = PopupPanel()
     var busy = false
 
@@ -220,16 +261,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.title = "译"
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "QuickTranslate · ⌥D 划词翻译", action: nil, keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "QuickTranslate", action: nil, keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "  ⌥D 划词翻译   ·   ⌥S 截图翻译", action: nil, keyEquivalent: ""))
         menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "截图翻译 (OCR)", action: #selector(triggerOCR), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "翻译剪贴板内容", action: #selector(translateClipboard), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "辅助功能权限设置…", action: #selector(openAXSettings), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "退出", action: #selector(NSApp.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
 
-        hotKey = HotKey(code: kHotKeyCode, mods: kHotKeyMods) { [weak self] in self?.trigger() }
-        if hotKey == nil { notify("热键注册失败", "⌥D 可能被占用") }
+        if !HotKeyCenter.shared.register(id: 1, code: kHotKeyCode, mods: kHotKeyMods,
+                                         action: { [weak self] in self?.trigger() }) {
+            notify("热键注册失败", "⌥D 可能被其它软件占用")
+        }
+        if !HotKeyCenter.shared.register(id: 2, code: kHotKeyCodeOCR, mods: kHotKeyMods,
+                                         action: { [weak self] in self?.triggerOCR() }) {
+            notify("热键注册失败", "⌥S 可能被其它软件占用")
+        }
     }
 
     func ensureAccessibility() {
@@ -245,6 +294,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let text = NSPasteboard.general.string(forType: .string)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if text.isEmpty { notify("剪贴板为空", ""); return }
         runTranslate(text)
+    }
+
+    @objc func triggerOCR() {
+        if busy { return }
+        busy = true
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            // 1. 框选截图（用户 Esc 取消则无文件）
+            guard let path = captureRegionToFile() else {
+                DispatchQueue.main.async { self.busy = false }
+                return
+            }
+            DispatchQueue.main.async { self.popup.present(original: "识别中…", translation: "翻译中…") }
+            // 2. 本地 OCR
+            let text = ocrImage(path)
+            try? FileManager.default.removeItem(atPath: path)
+            if text.isEmpty {
+                DispatchQueue.main.async {
+                    self.popup.present(original: "", translation: "⚠️ 未识别到文字")
+                    self.busy = false
+                }
+                return
+            }
+            // 3. 翻译
+            let result = nativeTranslate(text)
+            DispatchQueue.main.async {
+                self.popup.present(original: text, translation: result)
+                self.busy = false
+            }
+        }
     }
 
     func trigger() {

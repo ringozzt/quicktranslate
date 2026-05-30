@@ -2,6 +2,10 @@
 
 [English](./README.en.md) · **简体中文**
 
+<p align="center">
+  <img src="./assets/logo.svg" width="560" alt="QuickTranslate logo">
+</p>
+
 > 一个极简的 macOS 划词翻译工具：按 **⌥D** 翻译选中文字，直接复用 **macOS 系统自带的翻译引擎**——**零 API、零费用、零联网账号**。
 
 <p align="center">
@@ -15,7 +19,8 @@
 ## ✨ 特性
 
 - **⌥D 划词翻译**：任意 App 里选中文字，按 `⌥D`，光标旁弹出译文
-- **自动判断方向**：英文 → 中文，中文 → 英文（按选中内容自动切换）
+- **⌥S 截图翻译 (OCR)**：按 `⌥S` 框选屏幕区域，本地 OCR 识别后自动翻译（Vision 框架，离线免费，图片/视频/PDF 里的字也能翻）
+- **自动判断方向**：英文 → 中文，中文 → 英文（按内容自动切换）
 - **系统原生翻译**：走 macOS Translation 引擎，不调用任何第三方 API，不花钱
 - **点击译文即复制**，`Esc` 关闭
 - **菜单栏常驻**，无 Dock 图标，几乎不占资源
@@ -58,6 +63,15 @@ open build/QuickTranslate.app
 2. **系统设置 › 隐私与安全性 › 辅助功能** → 打开 **QuickTranslate** 的开关
 3. 退出并**重新打开** app（权限需重启生效）
 
+> ⌥S 截图翻译用系统 `screencapture` 框选，首次使用若提示「屏幕录制」权限，在 **隐私与安全性 › 屏幕录制** 里打开 QuickTranslate 即可。
+
+### 用法
+
+| 快捷键 | 功能 |
+|--------|------|
+| `⌥D` | 选中文字 → 翻译 |
+| `⌥S` | 框选屏幕区域 → OCR 识别 → 翻译 |
+
 ---
 
 ## 🔧 准备快捷指令
@@ -90,15 +104,15 @@ echo '{"text":"hello world","detectFrom":"","detectTo":"zh_CN"}' | shortcuts run
 ## ⚙️ 工作原理
 
 ```
-按 ⌥D
-  → 模拟 ⌘C 拷贝选中文字
-  → 读剪贴板，判断中/英方向（CJK 占比）
-  → 组装 {"text","detectFrom":"","detectTo":"zh_CN"|"en_US"}
-  → 用 `shortcuts run` 喂给快捷指令（= 系统原生「翻译文本」动作）
-  → 光标旁弹窗显示译文
+按 ⌥D（划词）
+  → 模拟 ⌘C 拷贝选中文字 ─┐
+                          ├→ 判断中/英方向（CJK 占比）
+按 ⌥S（截图）             │   → 组装 {"text","detectFrom":"","detectTo":"zh_CN"|"en_US"}
+  → screencapture -i 框选 │   → `shortcuts run` 喂给快捷指令（= 系统原生「翻译文本」动作）
+  → Vision 本地 OCR ──────┘   → 光标旁弹窗显示译文
 ```
 
-全局热键用 Carbon `RegisterEventHotKey`，弹窗是一个无边框 `NSPanel`，整个 app 是 `LSUIElement` 菜单栏程序。
+全局热键用 Carbon `RegisterEventHotKey`（多热键按 id 分发），OCR 用 `Vision` 框架本地识别，弹窗是无边框 `NSPanel`，整个 app 是 `LSUIElement` 菜单栏程序。
 
 ## 🛠 自定义
 
@@ -107,7 +121,8 @@ echo '{"text":"hello world","detectFrom":"","detectTo":"zh_CN"}' | shortcuts run
 | 常量 | 作用 | 默认 |
 |------|------|------|
 | `kShortcutName` | 调用的快捷指令名 | `Bob.Translate.v2` |
-| `kHotKeyCode` | 热键键位 | `kVK_ANSI_D`（D） |
+| `kHotKeyCode` | 划词翻译热键键位 | `kVK_ANSI_D`（D） |
+| `kHotKeyCodeOCR` | 截图翻译热键键位 | `kVK_ANSI_S`（S） |
 | `kHotKeyMods` | 修饰键 | `optionKey`（⌥） |
 
 目标语言判断逻辑在 `nativeTranslate()` 与 `isMostlyCJK()`，想支持更多语言可在此扩展。
@@ -115,8 +130,9 @@ echo '{"text":"hello world","detectFrom":"","detectTo":"zh_CN"}' | shortcuts run
 ## ❓ 常见问题
 
 - **按 ⌥D 没反应 / 取不到文字**：检查「辅助功能」权限是否已打开，并重启过 app。
+- **⌥S 框选后截不了图**：在「隐私与安全性 › 屏幕录制」里打开 QuickTranslate。
 - **报「不支持翻译」**：语言标识符要用 `zh_CN`/`en_US`；或对应语言系统还没准备好，先用「快捷指令」App 里的「翻译文本」动作手动跑一次同语言对触发初始化。
-- **⌥D 与其它软件冲突**：改 `kHotKeyCode` / `kHotKeyMods` 重新编译。
+- **⌥D / ⌥S 与其它软件冲突**：改 `kHotKeyCode` / `kHotKeyCodeOCR` / `kHotKeyMods` 重新编译。
 
 ## 🙏 致谢
 

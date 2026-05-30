@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="320" viewBox="0 0 1120 320" role="img" aria-labelledby="title desc">
+  <title id="title">QuickTranslate logo</title>
+  <desc id="desc">QuickTranslate wordmark with a macOS-style translation icon, showing A and 译 connected by a quick arrow and the Option-D shortcut.</desc>
+  <defs>
+    <linearGradient id="tile" x1="74" y1="54" x2="272" y2="280" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".54" stop-color="#f2fbf8"/>
+      <stop offset="1" stop-color="#e6eefb"/>
+    </linearGradient>
+    <linearGradient id="aqua" x1="80" y1="116" x2="236" y2="204" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#17d0bd"/>
+      <stop offset="1" stop-color="#0e8ff0"/>
+    </linearGradient>
+    <linearGradient id="coral" x1="200" y1="118" x2="286" y2="224" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff8668"/>
+      <stop offset="1" stop-color="#ff4d65"/>
+    </linearGradient>
+    <linearGradient id="word" x1="482" y1="82" x2="880" y2="174" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#17d0bd"/>
+      <stop offset="1" stop-color="#0e8ff0"/>
+    </linearGradient>
+    <filter id="softShadow" x="-16%" y="-14%" width="132%" height="136%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="12" stdDeviation="13" flood-color="#172033" flood-opacity=".14"/>
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#172033" flood-opacity=".10"/>
+    </filter>
+  </defs>
+
+  <rect width="1120" height="320" rx="32" fill="#ffffff"/>
+
+  <g transform="translate(40 40)">
+    <rect width="240" height="240" rx="58" fill="url(#tile)"/>
+    <rect x="1.5" y="1.5" width="237" height="237" rx="56.5" fill="none" stroke="#ffffff" stroke-width="3" opacity=".88"/>
+    <rect x="14" y="14" width="212" height="212" rx="47" fill="none" stroke="#21314d" stroke-opacity=".08" stroke-width="2"/>
+
+    <g filter="url(#softShadow)">
+      <path d="M65 55h111c21.4 0 38.8 17.4 38.8 38.8v39.8c0 21.4-17.4 38.8-38.8 38.8h-43.1l-44.1 36v-36H65c-21.4 0-38.8-17.4-38.8-38.8V93.8C26.2 72.4 43.6 55 65 55Z" fill="#ffffff"/>
+      <path d="M65 55h111c21.4 0 38.8 17.4 38.8 38.8v39.8c0 21.4-17.4 38.8-38.8 38.8h-43.1l-44.1 36v-36H65c-21.4 0-38.8-17.4-38.8-38.8V93.8C26.2 72.4 43.6 55 65 55Z" fill="none" stroke="#1b2538" stroke-width="5.4" stroke-linejoin="round"/>
+    </g>
+
+    <rect x="48" y="77" width="81" height="23" rx="9" fill="#17d0bd" opacity=".18"/>
+    <rect x="50" y="138" width="121" height="18" rx="8" fill="#0e8ff0" opacity=".10"/>
+    <rect x="136" y="78" width="54" height="23" rx="9" fill="#ff5f6f" opacity=".13"/>
+
+    <text x="59" y="137" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif" font-size="65" font-weight="800" fill="#1b2538">A</text>
+    <path d="M114 117h36" fill="none" stroke="url(#aqua)" stroke-width="8.5" stroke-linecap="round"/>
+    <path d="m145 102 19 15-19 15" fill="none" stroke="url(#aqua)" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="155" y="136" font-family="'PingFang SC', 'Hiragino Sans GB', 'Noto Sans CJK SC', sans-serif" font-size="57" font-weight="700" fill="url(#coral)">译</text>
+
+    <g transform="translate(153 31)">
+      <rect width="56" height="30" rx="12" fill="#1b2538"/>
+      <rect x=".8" y=".8" width="54.4" height="28.4" rx="11.2" fill="none" stroke="#ffffff" stroke-opacity=".14" stroke-width="1.6"/>
+      <path d="M10 11.5h8l8.5 9.8H40" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10 21.3h7" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+      <text x="40" y="21" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif" font-size="14" font-weight="750" fill="#ffffff">D</text>
+    </g>
+
+    <path d="m177 162 49 34-23 7 12 27-16.5 7.5-12.5-27-18 19.5 9-68Z" fill="#1b2538"/>
+    <path d="m177 162 49 34-23 7 12 27-16.5 7.5-12.5-27-18 19.5 9-68Z" fill="none" stroke="#ffffff" stroke-width="5.4" stroke-linejoin="round"/>
+  </g>
+
+  <g transform="translate(330 82)">
+    <text font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif" font-size="72" font-weight="820" letter-spacing="0" fill="#172033">
+      <tspan>Quick</tspan><tspan fill="url(#word)">Translate</tspan>
+    </text>
+    <text y="64" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif" font-size="24" font-weight="550" letter-spacing="0" fill="#5f6d7e">select text - press Option-D - translate with macOS</text>
+    <path d="M0 106h318" stroke="#d9e7ee" stroke-width="2" stroke-linecap="round"/>
+    <text y="146" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif" font-size="20" font-weight="650" letter-spacing="0" fill="#6a7889">native menu-bar translation</text>
+  </g>
+</svg>
