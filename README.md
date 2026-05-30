@@ -37,7 +37,17 @@
 
 ## 🚀 安装
 
-### 一键安装（推荐）
+### 方式一：下载安装包（最简单，无需编译）
+
+到 **[Releases](https://github.com/ringozzt/quicktranslate/releases/latest)** 下载 `.dmg`，打开后把 QuickTranslate 拖进「应用程序」。
+
+> ⚠️ 因为没做 Apple 公证，首次打开会被 Gatekeeper 拦截。**装好后执行一次**这条命令解除限制：
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/QuickTranslate.app
+> ```
+> 然后正常双击打开即可。
+
+### 方式二：一键脚本（本地编译，不会被 Gatekeeper 拦）
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ringozzt/quicktranslate/main/install.sh)"
@@ -45,7 +55,7 @@
 
 自动克隆到 `~/quicktranslate`、编译并启动。
 
-### 手动安装
+### 方式三：手动构建
 
 ```bash
 git clone https://github.com/ringozzt/quicktranslate.git

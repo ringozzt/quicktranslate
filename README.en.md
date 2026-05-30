@@ -37,7 +37,17 @@ Inspired by [Bob](https://bobtranslate.com/). Bob's "system translation" actuall
 
 ## 🚀 Install
 
-### One-liner
+### Option 1: Download the app (easiest, no build)
+
+Grab the `.dmg` from **[Releases](https://github.com/ringozzt/quicktranslate/releases/latest)** and drag QuickTranslate into Applications.
+
+> ⚠️ The app isn't Apple-notarized, so Gatekeeper blocks it on first open. **Run this once after installing** to clear the quarantine:
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/QuickTranslate.app
+> ```
+> Then open it normally.
+
+### Option 2: One-liner (builds locally, no Gatekeeper prompt)
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ringozzt/quicktranslate/main/install.sh)"
@@ -45,7 +55,7 @@ Inspired by [Bob](https://bobtranslate.com/). Bob's "system translation" actuall
 
 This clones the repo to `~/quicktranslate`, builds the app, and launches it.
 
-### Manual
+### Option 3: Build manually
 
 ```bash
 git clone https://github.com/ringozzt/quicktranslate.git
