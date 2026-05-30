@@ -453,7 +453,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ensureAccessibility()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.title = "译"
+        if let icon = loadMenuBarIcon() {
+            statusItem.button?.image = icon
+        } else {
+            statusItem.button?.title = "译"
+        }
         let t = HotkeyStore.load(HotkeyStore.translateID, kDefaultTranslate)
         let o = HotkeyStore.load(HotkeyStore.ocrID, kDefaultOCR)
 
@@ -509,6 +513,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func ensureAccessibility() {
         let opts = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(opts)
+    }
+
+    /// 菜单栏图标：用 app 自己的 logo，缩到 18pt（彩色，非模板）
+    func loadMenuBarIcon() -> NSImage? {
+        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+              let src = NSImage(contentsOf: url) else { return nil }
+        let img = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
+            src.draw(in: rect)
+            return true
+        }
+        img.isTemplate = false
+        return img
     }
 
     @objc func openAXSettings() {
