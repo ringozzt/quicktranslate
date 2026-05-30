@@ -15,9 +15,10 @@ xcrun -sdk macosx swiftc -O \
   -framework AppKit -framework Carbon -framework Vision \
   "$ROOT/src/main.swift" -o "$BIN"
 
-echo "==> 拷贝 app 图标"
+echo "==> 拷贝图标资源"
 [ -f "$ROOT/assets/AppIcon.icns" ] || bash "$ROOT/make-icon.sh" || true
-[ -f "$ROOT/assets/AppIcon.icns" ] && cp "$ROOT/assets/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns" || echo "   (无图标, 菜单栏回退为「译」)"
+[ -f "$ROOT/assets/AppIcon.icns" ] && cp "$ROOT/assets/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns" || echo "   (无 app 图标)"
+[ -f "$ROOT/assets/menubar.png" ] && cp "$ROOT/assets/menubar.png" "$APP/Contents/Resources/menubar.png" || echo "   (无菜单栏图标, 回退为「译」)"
 
 echo "==> 写 Info.plist (LSUIElement 后台运行)"
 cat > "$APP/Contents/Info.plist" <<'PLIST'

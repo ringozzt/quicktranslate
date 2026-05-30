@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- 对话气泡（描边，呼应 logo 的 bubble） -->
+  <path d="M24 14 H76 a12 12 0 0 1 12 12 V54 a12 12 0 0 1 -12 12 H46 L32 80 V66 H24 a12 12 0 0 1 -12 -12 V26 a12 12 0 0 1 12 -12 Z"
+        fill="none" stroke="black" stroke-width="7" stroke-linejoin="round"/>
+  <!-- 译 -->
+  <text x="50" y="55" text-anchor="middle"
+        font-family="'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif"
+        font-size="42" font-weight="800" fill="black">译</text>
+</svg>

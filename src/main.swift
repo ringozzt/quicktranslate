@@ -515,15 +515,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = AXIsProcessTrustedWithOptions(opts)
     }
 
-    /// 菜单栏图标：用 app 自己的 logo，缩到 18pt（彩色，非模板）
+    /// 菜单栏图标：单色模板 glyph（气泡+译），自动适配深浅色
     func loadMenuBarIcon() -> NSImage? {
-        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+        guard let url = Bundle.main.url(forResource: "menubar", withExtension: "png"),
               let src = NSImage(contentsOf: url) else { return nil }
         let img = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
             src.draw(in: rect)
             return true
         }
-        img.isTemplate = false
+        img.isTemplate = true   // 关键：模板图随系统主题反色
         return img
     }
 
