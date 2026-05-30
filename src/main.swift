@@ -134,21 +134,39 @@ func copySelectedText() -> String {
 }
 
 // ============ 截图 OCR（系统截图 + Vision 本地识别）============
-func captureRegionToFile() -> String? {
-    let tmp = NSTemporaryDirectory() + "qt_ocr_\(getpid()).png"
+var gCaptureSeq = 0
+// 框选截图 -> NSImage。优先读文件；文件没有(比如按住 Control 被送进剪贴板)则回退读剪贴板。
+func captureRegion() -> NSImage? {
+    gCaptureSeq += 1
+    let tmp = NSTemporaryDirectory() + "qt_ocr_\(getpid())_\(gCaptureSeq).png"
     try? FileManager.default.removeItem(atPath: tmp)
+
+    let pb = NSPasteboard.general
+    let pbBefore = pb.changeCount
+
     let p = Process()
     p.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
     p.arguments = ["-i", "-x", tmp]   // -i 交互框选, -x 无快门声
     do { try p.run() } catch { return nil }
     p.waitUntilExit()
-    // 用户按 Esc 取消框选时不会生成文件
-    return FileManager.default.fileExists(atPath: tmp) ? tmp : nil
+    // 等文件落盘后再判定（screencapture 退出后文件可能略有延迟）
+    var waited = 0
+    while !FileManager.default.fileExists(atPath: tmp) && waited < 80 { usleep(10_000); waited += 1 }
+
+    // 1) 正常：文件
+    if FileManager.default.fileExists(atPath: tmp), let img = NSImage(contentsOfFile: tmp) {
+        try? FileManager.default.removeItem(atPath: tmp)
+        return img
+    }
+    // 2) 回退：框选时按住 Control，截图会被送进剪贴板
+    if pb.changeCount != pbBefore, let img = NSImage(pasteboard: pb) {
+        return img
+    }
+    return nil
 }
 
-func ocrImage(_ path: String) -> String {
-    guard let img = NSImage(contentsOfFile: path),
-          let tiff = img.tiffRepresentation,
+func ocrImage(_ img: NSImage) -> String {
+    guard let tiff = img.tiffRepresentation,
           let bitmap = NSBitmapImageRep(data: tiff),
           let cg = bitmap.cgImage else { return "" }
     let req = VNRecognizeTextRequest()
@@ -156,43 +174,121 @@ func ocrImage(_ path: String) -> String {
     req.usesLanguageCorrection = true
     req.recognitionLanguages = ["zh-Hans", "en-US"]
     let handler = VNImageRequestHandler(cgImage: cg, options: [:])
-    try? handler.perform([req])
+    do { try handler.perform([req]) } catch { return "" }
     let obs = req.results ?? []
     let lines = obs.compactMap { $0.topCandidates(1).first?.string }
-    return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    let text = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    return text
+}
+
+let kPopupHint = "⌘↩ 重新翻译 · 点击译文复制 · Esc / ✕ 关闭"
+
+// ============ 可编辑输入框（⌘↩ 重新翻译, Esc 关闭）============
+final class InputTextView: NSTextView {
+    var onSubmit: (() -> Void)?
+    var onEscape: (() -> Void)?
+    override func keyDown(with e: NSEvent) {
+        let isReturn = e.keyCode == UInt16(kVK_Return) || e.keyCode == UInt16(kVK_ANSI_KeypadEnter)
+        if isReturn && e.modifierFlags.contains(.command) { onSubmit?(); return }
+        if e.keyCode == UInt16(kVK_Escape) { onEscape?(); return }
+        super.keyDown(with: e)
+    }
 }
 
 // ============ 弹窗 ============
 final class PopupPanel: NSPanel {
-    private let origLabel = NSTextField(wrappingLabelWithString: "")
+    private let input = InputTextView()
+    private let scroll = NSScrollView()
     private let transLabel = NSTextField(wrappingLabelWithString: "")
-    private let hintLabel = NSTextField(labelWithString: "点击译文可复制 · Esc 关闭")
-    private var globalMonitor: Any?
+    private let hintLabel = NSTextField(labelWithString: "")
+    private let closeBtn = NSButton()
+    private let translateBtn = NSButton(title: "翻译", target: nil, action: nil)
     private var localMonitor: Any?
+    private var globalEscMonitor: Any?
     private var currentTranslation = ""
+    private let contentWidth: CGFloat = 408
+    var onRetranslate: ((String) -> Void)?
 
     init() {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 420, height: 120),
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 440, height: 200),
                    styleMask: [.nonactivatingPanel, .borderless],
                    backing: .buffered, defer: false)
         isFloatingPanel = true
         level = .floating
+        becomesKeyOnlyIfNeeded = true     // 点输入框时才成为 key, 不抢占前台 App 焦点
         hidesOnDeactivate = false
         isMovableByWindowBackground = true
+        isOpaque = false
         backgroundColor = .clear
         hasShadow = true
 
+        let radius: CGFloat = 16
         let bg = NSVisualEffectView()
         bg.material = .hudWindow
         bg.state = .active
         bg.blendingMode = .behindWindow
         bg.wantsLayer = true
-        bg.layer?.cornerRadius = 12
+        bg.layer?.cornerRadius = radius
+        bg.layer?.cornerCurve = .continuous
         bg.layer?.masksToBounds = true
+        // 关键：用圆角蒙版图，让毛玻璃材质和窗口阴影都贴着圆角，消除外圈方形线框
+        bg.maskImage = PopupPanel.roundedMaskImage(radius: radius)
 
-        origLabel.font = .systemFont(ofSize: 12)
-        origLabel.textColor = .secondaryLabelColor
-        origLabel.maximumNumberOfLines = 3
+        // —— 头部：标题 + 关闭按钮 ——
+        let title = NSTextField(labelWithString: "原文（可编辑，⌘↩ 重新翻译）")
+        title.font = .systemFont(ofSize: 11)
+        title.textColor = .secondaryLabelColor
+        if let x = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "关闭") {
+            closeBtn.image = x; closeBtn.imagePosition = .imageOnly
+        } else { closeBtn.title = "✕" }
+        closeBtn.isBordered = false
+        closeBtn.contentTintColor = .secondaryLabelColor
+        closeBtn.target = self
+        closeBtn.action = #selector(dismissAction)
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let header = NSStackView(views: [title, spacer, closeBtn])
+        header.orientation = .horizontal
+        header.spacing = 6
+        header.alignment = .centerY
+
+        // —— 可编辑输入框 ——
+        input.isRichText = false
+        input.font = .systemFont(ofSize: 13)
+        input.isEditable = true
+        input.isSelectable = true
+        input.drawsBackground = false
+        input.textContainerInset = NSSize(width: 4, height: 6)
+        input.isVerticallyResizable = true
+        input.isHorizontallyResizable = false
+        input.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        input.textContainer?.widthTracksTextView = true
+        input.autoresizingMask = [.width]
+        input.onSubmit = { [weak self] in self?.submit() }
+        input.onEscape = { [weak self] in self?.dismiss() }
+        scroll.documentView = input
+        scroll.hasVerticalScroller = true
+        scroll.drawsBackground = false
+        scroll.borderType = .noBorder
+        scroll.wantsLayer = true
+        scroll.layer?.cornerRadius = 8
+        scroll.layer?.borderWidth = 1
+        scroll.layer?.borderColor = NSColor.separatorColor.cgColor
+        scroll.layer?.backgroundColor = NSColor.textBackgroundColor.withAlphaComponent(0.35).cgColor
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.heightAnchor.constraint(equalToConstant: 60).isActive = true
+
+        translateBtn.bezelStyle = .rounded
+        translateBtn.controlSize = .regular
+        translateBtn.target = self
+        translateBtn.action = #selector(submit)
+        translateBtn.setContentHuggingPriority(.required, for: .horizontal)
+        let inputRow = NSStackView(views: [scroll, translateBtn])
+        inputRow.orientation = .horizontal
+        inputRow.spacing = 8
+        inputRow.alignment = .centerY
+
+        let sep = NSBox(); sep.boxType = .separator
 
         transLabel.font = .systemFont(ofSize: 16, weight: .medium)
         transLabel.textColor = .labelColor
@@ -201,13 +297,11 @@ final class PopupPanel: NSPanel {
         hintLabel.font = .systemFont(ofSize: 10)
         hintLabel.textColor = .tertiaryLabelColor
 
-        let sep = NSBox(); sep.boxType = .separator
-
-        let stack = NSStackView(views: [origLabel, sep, transLabel, hintLabel])
+        let stack = NSStackView(views: [header, inputRow, sep, transLabel, hintLabel])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 8
-        stack.edgeInsets = NSEdgeInsets(top: 14, left: 16, bottom: 12, right: 16)
+        stack.edgeInsets = NSEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         contentView = bg
@@ -217,14 +311,37 @@ final class PopupPanel: NSPanel {
             stack.trailingAnchor.constraint(equalTo: bg.trailingAnchor),
             stack.topAnchor.constraint(equalTo: bg.topAnchor),
             stack.bottomAnchor.constraint(equalTo: bg.bottomAnchor),
-            origLabel.widthAnchor.constraint(equalToConstant: 388),
-            transLabel.widthAnchor.constraint(equalToConstant: 388),
+            header.widthAnchor.constraint(equalToConstant: contentWidth),
+            inputRow.widthAnchor.constraint(equalToConstant: contentWidth),
+            transLabel.widthAnchor.constraint(equalToConstant: contentWidth),
         ])
 
-        // 点击译文复制
         let click = NSClickGestureRecognizer(target: self, action: #selector(copyTranslation))
         transLabel.addGestureRecognizer(click)
     }
+
+    override var canBecomeKey: Bool { true }
+
+    /// 可拉伸的圆角蒙版图（中间用 capInsets 拉伸，四角保持圆角）
+    static func roundedMaskImage(radius: CGFloat) -> NSImage {
+        let d = radius * 2 + 1
+        let img = NSImage(size: NSSize(width: d, height: d), flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
+            return true
+        }
+        img.capInsets = NSEdgeInsets(top: radius, left: radius, bottom: radius, right: radius)
+        img.resizingMode = .stretch
+        return img
+    }
+
+    @objc private func submit() {
+        let t = input.string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return }
+        setTranslation("翻译中…")
+        onRetranslate?(t)
+    }
+    @objc private func dismissAction() { dismiss() }
 
     @objc private func copyTranslation() {
         guard !currentTranslation.isEmpty else { return }
@@ -234,17 +351,26 @@ final class PopupPanel: NSPanel {
         hintLabel.textColor = .systemGreen
     }
 
+    /// 仅更新译文（重新翻译时用，不动输入框）
+    func setTranslation(_ t: String) {
+        transLabel.stringValue = t
+        currentTranslation = t.hasPrefix("⚠️") || t == "翻译中…" ? "" : t
+        if hintLabel.textColor == NSColor.systemGreen {  // 复制提示复位
+            hintLabel.stringValue = kPopupHint; hintLabel.textColor = .tertiaryLabelColor
+        }
+        resizeKeepingTop()
+    }
+
     func present(original: String, translation: String) {
-        origLabel.stringValue = original
+        input.string = original
         transLabel.stringValue = translation
-        currentTranslation = translation.hasPrefix("⚠️") ? "" : translation
-        hintLabel.stringValue = "点击译文可复制 · Esc 关闭"
+        currentTranslation = translation.hasPrefix("⚠️") || translation == "翻译中…" ? "" : translation
+        hintLabel.stringValue = kPopupHint
         hintLabel.textColor = .tertiaryLabelColor
         layoutIfNeeded()
 
-        let fitting = (contentView?.fittingSize) ?? NSSize(width: 420, height: 120)
-        let w: CGFloat = 420
-        let h = max(80, fitting.height)
+        let h = max(150, contentView?.fittingSize.height ?? 200)
+        let w: CGFloat = 440
         var origin = NSEvent.mouseLocation
         origin.x += 12
         origin.y -= (h + 12)
@@ -255,25 +381,36 @@ final class PopupPanel: NSPanel {
         }
         setFrame(NSRect(x: origin.x, y: origin.y, width: w, height: h), display: true)
         orderFrontRegardless()
-        installDismissMonitors()
+        installMonitors()
     }
 
-    private func installDismissMonitors() {
+    /// 译文变化导致高度变化时，保持顶边不动（向下生长）
+    private func resizeKeepingTop() {
+        layoutIfNeeded()
+        let h = max(150, contentView?.fittingSize.height ?? frame.height)
+        var f = frame
+        let top = f.maxY
+        f.size.height = h
+        f.origin.y = top - h
+        setFrame(f, display: true)
+    }
+
+    private func installMonitors() {
         removeMonitors()
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            self?.dismiss()
+        // 失焦状态下也能用 Esc 关闭（需辅助功能权限, 已具备）
+        globalEscMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] e in
+            if e.keyCode == UInt16(kVK_Escape) { self?.dismiss() }
         }
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown]) { [weak self] e in
-            if e.type == .keyDown && e.keyCode == UInt16(kVK_Escape) { self?.dismiss(); return nil }
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] e in
+            if e.keyCode == UInt16(kVK_Escape) { self?.dismiss(); return nil }
             return e
         }
     }
     private func removeMonitors() {
-        if let g = globalMonitor { NSEvent.removeMonitor(g); globalMonitor = nil }
+        if let g = globalEscMonitor { NSEvent.removeMonitor(g); globalEscMonitor = nil }
         if let l = localMonitor { NSEvent.removeMonitor(l); localMonitor = nil }
     }
     func dismiss() { removeMonitors(); orderOut(nil) }
-    override var canBecomeKey: Bool { true }
 }
 
 // ============ 全局热键（支持多个，按 id 分发）============
@@ -451,6 +588,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ n: Notification) {
         NSApp.setActivationPolicy(.accessory)   // 无 Dock 图标
         ensureAccessibility()
+        popup.onRetranslate = { [weak self] text in self?.retranslate(text) }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let icon = loadMenuBarIcon() {
@@ -542,15 +680,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         busy = true
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
-            // 1. 框选截图（用户 Esc 取消则无文件）
-            guard let path = captureRegionToFile() else {
+            // 1. 框选截图（用户 Esc 取消则返回 nil）
+            guard let img = captureRegion() else {
                 DispatchQueue.main.async { self.busy = false }
                 return
             }
             DispatchQueue.main.async { self.popup.present(original: "识别中…", translation: "翻译中…") }
             // 2. 本地 OCR
-            let text = ocrImage(path)
-            try? FileManager.default.removeItem(atPath: path)
+            let text = ocrImage(img)
             if text.isEmpty {
                 DispatchQueue.main.async {
                     self.popup.present(original: "", translation: "⚠️ 未识别到文字")
@@ -583,9 +720,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let result = nativeTranslate(text)
             DispatchQueue.main.async {
-                self?.popup.present(original: text, translation: result)
+                self?.popup.setTranslation(result)   // 只更新译文, 保留(可编辑的)原文
                 self?.busy = false
             }
+        }
+    }
+
+    /// 用户编辑原文后重新翻译（只更新译文区）
+    func retranslate(_ text: String) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let result = nativeTranslate(text)
+            DispatchQueue.main.async { self?.popup.setTranslation(result) }
         }
     }
 
