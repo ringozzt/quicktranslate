@@ -1,6 +1,12 @@
 # QuickTranslate
 
+[English](./README.en.md) · **简体中文**
+
 > 一个极简的 macOS 划词翻译工具：按 **⌥D** 翻译选中文字，直接复用 **macOS 系统自带的翻译引擎**——**零 API、零费用、零联网账号**。
+
+<p align="center">
+  <img src="./assets/demo.gif" width="720" alt="QuickTranslate 演示">
+</p>
 
 灵感来自 [Bob](https://bobtranslate.com/)。Bob 的「系统翻译」其实是借助一个 **快捷指令** 调用 macOS 原生的「翻译文本」动作。本项目把这个原理抽出来，做成一个不到 300 行 Swift 的轻量菜单栏小工具。
 
@@ -24,6 +30,16 @@
 ---
 
 ## 🚀 安装
+
+### 一键安装（推荐）
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/ringozzt/quicktranslate/main/install.sh)"
+```
+
+自动克隆到 `~/quicktranslate`、编译并启动。
+
+### 手动安装
 
 ```bash
 git clone https://github.com/ringozzt/quicktranslate.git
