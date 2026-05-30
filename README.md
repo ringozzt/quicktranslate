@@ -21,6 +21,7 @@
 - **⌥D 划词翻译**：任意 App 里选中文字，按 `⌥D`，光标旁弹出译文
 - **⌥S 截图翻译 (OCR)**：按 `⌥S` 框选屏幕区域，本地 OCR 识别后自动翻译（Vision 框架，离线免费，图片/视频/PDF 里的字也能翻）
 - **自动判断方向**：英文 → 中文，中文 → 英文（按内容自动切换）
+- **快捷键可自定义**：菜单栏「偏好设置」里点一下录制框就能改 ⌥D/⌥S，热键冲突自行解决（无需改代码重编译）
 - **系统原生翻译**：走 macOS Translation 引擎，不调用任何第三方 API，不花钱
 - **点击译文即复制**，`Esc` 关闭
 - **菜单栏常驻**，无 Dock 图标，几乎不占资源
@@ -72,6 +73,8 @@ open build/QuickTranslate.app
 | `⌥D` | 选中文字 → 翻译 |
 | `⌥S` | 框选屏幕区域 → OCR 识别 → 翻译 |
 
+> 想换快捷键？点菜单栏 **译 → 偏好设置（自定义快捷键）…**，点录制框按下新组合键即可，立即生效。和别的软件冲突时在这里改就行。
+
 ---
 
 ## 🔧 准备快捷指令
@@ -116,14 +119,15 @@ echo '{"text":"hello world","detectFrom":"","detectTo":"zh_CN"}' | shortcuts run
 
 ## 🛠 自定义
 
-改 `src/main.swift` 顶部的配置后重新 `./build.sh`：
+**快捷键**直接在 app 内「偏好设置」里改即可，无需动代码。其余可改 `src/main.swift` 顶部配置后重新 `./build.sh`：
 
 | 常量 | 作用 | 默认 |
 |------|------|------|
 | `kShortcutName` | 调用的快捷指令名 | `Bob.Translate.v2` |
-| `kHotKeyCode` | 划词翻译热键键位 | `kVK_ANSI_D`（D） |
-| `kHotKeyCodeOCR` | 截图翻译热键键位 | `kVK_ANSI_S`（S） |
-| `kHotKeyMods` | 修饰键 | `optionKey`（⌥） |
+| `kDefaultTranslate` | 划词翻译**默认**热键 | ⌥D |
+| `kDefaultOCR` | 截图翻译**默认**热键 | ⌥S |
+
+> 用户在偏好设置里改的热键存到 `UserDefaults`，优先于以上默认值；点「恢复默认」即可还原。
 
 目标语言判断逻辑在 `nativeTranslate()` 与 `isMostlyCJK()`，想支持更多语言可在此扩展。
 
@@ -132,7 +136,7 @@ echo '{"text":"hello world","detectFrom":"","detectTo":"zh_CN"}' | shortcuts run
 - **按 ⌥D 没反应 / 取不到文字**：检查「辅助功能」权限是否已打开，并重启过 app。
 - **⌥S 框选后截不了图**：在「隐私与安全性 › 屏幕录制」里打开 QuickTranslate。
 - **报「不支持翻译」**：语言标识符要用 `zh_CN`/`en_US`；或对应语言系统还没准备好，先用「快捷指令」App 里的「翻译文本」动作手动跑一次同语言对触发初始化。
-- **⌥D / ⌥S 与其它软件冲突**：改 `kHotKeyCode` / `kHotKeyCodeOCR` / `kHotKeyMods` 重新编译。
+- **⌥D / ⌥S 与其它软件冲突**：菜单栏「偏好设置」里换个组合键即可（注册失败会弹提示，换一个没被占用的）。
 
 ## 🙏 致谢
 

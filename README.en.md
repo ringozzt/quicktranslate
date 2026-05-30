@@ -21,6 +21,7 @@ Inspired by [Bob](https://bobtranslate.com/). Bob's "system translation" actuall
 - **⌥D selection translation** — select text in any app, press `⌥D`, the translation pops up by your cursor
 - **⌥S screenshot translation (OCR)** — press `⌥S`, drag-select a screen region, text is recognized locally and translated (Apple Vision framework, offline & free — works on text in images, videos, PDFs)
 - **Auto direction** — English → Chinese, Chinese → English (switched automatically based on the content)
+- **Customizable hotkeys** — change ⌥D/⌥S in the menu-bar **Preferences** by recording a new combo; resolve conflicts yourself, no recompiling
 - **Native engine** — uses the macOS Translation engine; no third-party API, no cost
 - **Click the result to copy**, press `Esc` to dismiss
 - **Lives in the menu bar**, no Dock icon, negligible footprint
@@ -72,6 +73,8 @@ Simulating `⌘C` to grab the selected text requires Accessibility permission:
 | `⌥D` | Selected text → translate |
 | `⌥S` | Drag-select a screen region → OCR → translate |
 
+> Want different keys? Menu bar **译 → Preferences (custom hotkeys)…**, click a recorder field and press the new combo — applied instantly. Change them here whenever they clash with another app.
+
 ---
 
 ## 🔧 Setting up the Shortcut
@@ -116,14 +119,15 @@ The global hotkeys use Carbon `RegisterEventHotKey` (multiple keys dispatched by
 
 ## 🛠 Customize
 
-Edit the constants at the top of `src/main.swift`, then re-run `./build.sh`:
+**Hotkeys** are changed inside the app's Preferences — no code needed. Everything else: edit the constants at the top of `src/main.swift`, then re-run `./build.sh`:
 
 | Constant | Purpose | Default |
 |----------|---------|---------|
 | `kShortcutName` | Shortcut to invoke | `Bob.Translate.v2` |
-| `kHotKeyCode` | Selection-translate key | `kVK_ANSI_D` (D) |
-| `kHotKeyCodeOCR` | Screenshot-translate key | `kVK_ANSI_S` (S) |
-| `kHotKeyMods` | Modifier | `optionKey` (⌥) |
+| `kDefaultTranslate` | **Default** selection hotkey | ⌥D |
+| `kDefaultOCR` | **Default** screenshot hotkey | ⌥S |
+
+> User-set hotkeys are persisted to `UserDefaults` and take precedence over these defaults; click "Restore defaults" to reset.
 
 Direction logic lives in `nativeTranslate()` and `isMostlyCJK()` — extend there for more languages.
 
@@ -132,7 +136,7 @@ Direction logic lives in `nativeTranslate()` and `isMostlyCJK()` — extend ther
 - **⌥D does nothing / no text captured**: make sure Accessibility permission is on and you've relaunched the app.
 - **⌥S can't capture after selecting**: enable QuickTranslate under Privacy & Security › Screen Recording.
 - **"Translation not supported"**: use `zh_CN`/`en_US` identifiers; or the language pair isn't ready yet — run the **Translate Text** action once in the Shortcuts app to initialize it.
-- **⌥D / ⌥S clashes with another app**: change `kHotKeyCode` / `kHotKeyCodeOCR` / `kHotKeyMods` and rebuild.
+- **⌥D / ⌥S clashes with another app**: pick a different combo in menu-bar Preferences (a failed registration shows an alert — choose one that's free).
 
 ## 🙏 Credits
 
