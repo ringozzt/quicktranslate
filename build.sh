@@ -41,7 +41,14 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-echo "==> ad-hoc 签名 (稳定权限授权)"
-codesign --force --deep -s - "$APP" 2>/dev/null || true
+echo "==> 代码签名"
+# 优先用稳定的自签名证书：授权依据基于证书而非 cdhash，重编译/重装后辅助功能授权不失效。
+# 一次性创建：见 README「稳定签名（可选）」。没有证书则回退 ad-hoc。
+IDENTITY="QuickTranslate Local Signing"
+if security find-identity -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
+  codesign --force --deep -s "$IDENTITY" "$APP" 2>/dev/null && echo "   ✓ 稳定证书签名 ($IDENTITY)"
+else
+  codesign --force --deep -s - "$APP" 2>/dev/null && echo "   ad-hoc 签名（建议创建稳定证书，见 README）"
+fi
 
 echo "==> 完成: $APP"
